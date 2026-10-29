@@ -1,0 +1,111 @@
+# TestFlow CI 正式模式编排（可选）。
+#
+# M1 不需要 Docker：EXECUTOR_MODE=inline + SQLite 就能跑通闭环。
+# 需要切到 PostgreSQL + Redis + Celery 时再执行：
+#
+#   docker compose up -d postgres redis          # 只起基础设施，API/Worker 仍在宿主机跑
+#   docker compose up -d                         # 或者全量容器化
+#
+# 只起基础设施时，把 .env 改成：
+#   DATABASE_URL=postgresql+psycopg://testflow:testflow@localhost:5432/testflow
+#   EXECUTOR_MODE=celery
+#   CELERY_BROKER_URL=redis://localhost:6379/0
+#
+# 校验语法：docker compose config
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: testflow-postgres
+    environment:
+      POSTGRES_USER: testflow
+      POSTGRES_PASSWORD: testflow
+      POSTGRES_DB: testflow
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testflow -d testflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: testflow-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: testflow-api
+    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://testflow:testflow@postgres:5432/testflow
+      EXECUTOR_MODE: celery
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      STORAGE_DIR: /app/storage
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      TESTFLOW_SECRET: ${TESTFLOW_SECRET:-change-me-in-production}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-admin123}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: testflow-worker
+    # Windows 宿主机直跑 Celery 时必须 --pool=solo；容器内用默认 prefork 即可
+    command: ["celery", "-A", "backend.app.workers.celery_app.celery_app", "worker", "-l", "info", "--concurrency=2"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://testflow:testflow@postgres:5432/testflow
+      EXECUTOR_MODE: celery
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      STORAGE_DIR: /app/storage
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      TESTFLOW_SECRET: ${TESTFLOW_SECRET:-change-me-in-production}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  demo-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: testflow-demo-app
+    command: ["uvicorn", "demo_app.main:app", "--host", "0.0.0.0", "--port", "8100"]
+    ports:
+      - "8100:8100"
+    depends_on:
+      - api
+
+volumes:
+  postgres-data:
+  redis-data:

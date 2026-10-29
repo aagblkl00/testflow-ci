@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}登录 · TestFlow Demo 商城{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px">
+  <h1>账号登录</h1>
+  {% if error %}<div class="error" data-testid="login-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">
+    <div style="margin-bottom:16px">
+      <label for="username">用户名</label>
+      <input id="username" name="username" data-testid="login-username" placeholder="demo" autocomplete="username">
+    </div>
+    <div style="margin-bottom:20px">
+      <label for="password">密码</label>
+      <input id="password" name="password" type="password" data-testid="login-password" placeholder="demo123" autocomplete="current-password">
+    </div>
+    <button type="submit" data-testid="login-submit">登录</button>
+  </form>
+  <p class="muted" style="margin-top:18px" data-testid="login-hint">演示账号：demo / demo123</p>
+</div>
+{% endblock %}

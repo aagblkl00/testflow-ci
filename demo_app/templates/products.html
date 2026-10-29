@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}商品 · TestFlow Demo 商城{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>商品列表</h1>
+  <table data-testid="product-table">
+    <thead><tr><th>SKU</th><th>名称</th><th>分类</th><th>价格</th><th>库存</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for item in items %}
+      <tr>
+        <td data-testid="product-sku">{{ item.sku }}</td>
+        <td data-testid="product-name">{{ item.name }}</td>
+        <td>{{ item.category }}</td>
+        <td>¥{{ item.price }}</td>
+        <td data-testid="product-stock">{{ item.stock }}</td>
+        <td><a href="/orders?sku={{ item.sku }}" data-testid="buy-link">下单</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

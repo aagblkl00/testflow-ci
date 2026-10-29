@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+sqlalchemy>=2.0
+pydantic>=2.0
+python-multipart
+playwright>=1.40
+httpx
+pyyaml
+jinja2
+celery
+redis
+# 正式模式切换 PostgreSQL 时需要（本机未装可暂时不装）
+# psycopg[binary]
+pytest

@@ -1,0 +1,106 @@
+# TestFlow CI 接入 GitLab 的示例流水线。
+#
+# 放两份真实可用的形态，按自己的 GitLab 环境选一种（或都用）：
+#
+#   方案 A（推荐）：CI Job 直接调用 TestFlow CLI
+#       —— 最可控。GitLab 会注入全部 CI_* 变量，Job 原样转发给 TestFlowCI，
+#          TestFlowCI 的退出码直接成为 Job 的退出码。
+#       —— 需要事前准备：
+#            1. Runner 能访问 TestFlowCI 地址
+#            2. pip install -e <TestFlowCI 仓库路径>  或把 CLI 打进镜像
+#            3. GitLab 项目 Settings → CI/CD → Variables 里加
+#                 TESTFLOW_URL       = http://<testflow-host>:8000
+#                 TESTFLOW_CI_TOKEN  = <与服务端 TESTFLOW_CI_TOKEN 一致>  （勾 Masked + Protected）
+#                 TESTFLOW_PROJECT   = <TestFlowCI 里的项目名>
+#                 TESTFLOW_ENV       = <TestFlowCI 里的环境名>
+#
+#   方案 B：GitLab 原生 Pipeline Webhook
+#       —— 项目 Settings → Webhooks → 勾选 Pipeline events，
+#          URL 填 http://<testflow-host>:8000/api/ci/gitlab/trigger，
+#          Secret token 填与服务端 TESTFLOW_CI_TOKEN 一致的值。
+#       —— GitLab 的 Pipeline 载荷不知道「跑哪个计划」，所以要在流水线里用
+#          pipeline 变量带出来（见下方触发段）：TESTFLOW_PROJECT / PLAN / ENV。
+#       —— 幂等键是 (project, plan, pipeline_id)，所以 Webhook 重试、GitLab 重跑
+#          都不会重复建 Run —— 这正是方案 §13 的要求。
+#
+# 退出码语义（TestFlowCI 与 GitLab 的约定）：
+#   0 = 测试全通过
+#   1 = 测试有未通过用例（**包含被测环境连不上**）
+#   2 = TestFlowCI 自身没能完成可靠执行（平台侧问题）
+
+variables:
+  TESTFLOW_ENV: "test"
+
+stages:
+  - regression
+
+# --------------------------------------------------------------- 方案 A
+regression:cli:
+  stage: regression
+  image: python:3.13-slim
+  variables:
+    TESTFLOW_PROJECT: "商城系统"
+  before_script:
+    # 真实项目里把 CLI 打进镜像，或用 pip 从内网源安装；这里用可编辑安装示意
+    - pip install --no-cache-dir -e "${TESTFLOW_SOURCE:-.}"
+  script:
+    # 退出码原样传给 GitLab：0 绿、1 红（测试失败）、2 红（平台故障）
+    - |
+      testflow run \
+        --plan smoke \
+        --env "${TESTFLOW_ENV}" \
+        --project "${TESTFLOW_PROJECT}" \
+        --pipeline-id "${CI_PIPELINE_ID}" \
+        --pipeline-url "${CI_PIPELINE_URL}" \
+        --commit-sha "${CI_COMMIT_SHA}" \
+        --branch "${CI_COMMIT_REF_NAME}" \
+        --triggered-by "${GITLAB_USER_LOGIN}" \
+        --timeout 3600
+  # 失败时把结构化结果留成产物，方便排查（stdout 是干净的 JSON）
+  artifacts:
+    when: always
+    paths:
+      - testflow-result.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# 需要机器可读结果时用这条：stdout 只输出 JSON，日志全在 stderr
+regression:json:
+  stage: regression
+  image: python:3.13-slim
+  variables:
+    TESTFLOW_PROJECT: "商城系统"
+  before_script:
+    - pip install --no-cache-dir -e "${TESTFLOW_SOURCE:-.}"
+  script:
+    - testflow run --plan smoke --env "${TESTFLOW_ENV}" --project "${TESTFLOW_PROJECT}"
+      --pipeline-id "${CI_PIPELINE_ID}" --json > testflow-result.json
+  artifacts:
+    when: always
+    paths:
+      - testflow-result.json
+  when: manual
+
+# --------------------------------------------------------------- 方案 B
+# 触发 GitLab 原生 Pipeline Webhook（把 pipeline 变量带上，TestFlowCI 才知道跑哪个计划）
+trigger:webhook:
+  stage: regression
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl -sS -X POST "${TESTFLOW_URL}/api/ci/gitlab/trigger" \
+        -H "X-TestFlow-Token: ${TESTFLOW_CI_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "{
+              \"project\": \"${TESTFLOW_PROJECT}\",
+              \"plan\": \"smoke\",
+              \"environment\": \"${TESTFLOW_ENV}\",
+              \"pipeline_id\": \"${CI_PIPELINE_ID}\",
+              \"pipeline_url\": \"${CI_PIPELINE_URL}\",
+              \"commit_sha\": \"${CI_COMMIT_SHA}\",
+              \"branch\": \"${CI_COMMIT_REF_NAME}\",
+              \"triggered_by\": \"${GITLAB_USER_LOGIN}\"
+            }"
+  when: manual

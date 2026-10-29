@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}首页 · TestFlow Demo 商城{% endblock %}
+{% block content %}
+{% if not faults.get('missing_element') and not faults.get('js_error') %}
+<h1 data-testid="home-greeting">欢迎回来，{{ user }}</h1>
+{% endif %}
+<div class="stats">
+  <div class="stat"><div class="k">在售商品</div><div class="v" data-testid="stat-products">{{ product_count }}</div></div>
+  <div class="stat"><div class="k">我的订单</div><div class="v" data-testid="stat-orders">{{ order_count }}</div></div>
+</div>
+<div class="card">
+  <h2>快捷入口</h2>
+  <div class="row">
+    <div><label>搜索商品</label><input id="quick-q" data-testid="home-quick-search" placeholder="键盘 / SKU-1001"></div>
+    <div class="shrink"><button class="ghost" data-testid="home-search-jump" onclick="location.href='/search?q='+encodeURIComponent(document.getElementById('quick-q').value)">去搜索</button></div>
+    <div class="shrink"><button data-testid="home-order-jump" onclick="location.href='/orders'">查看订单</button></div>
+  </div>
+</div>
+{# 故障注入：脚本异常。这里只能写在 content 块里 —— base.html 没有 scripts 块，
+   在子模板里定义父模板不存在的 block 会被 Jinja 直接丢弃，脚本永远注入不进去。 #}
+{% if faults.get('js_error') %}
+<script>
+  // 配合问候语不渲染，制造「前端脚本崩了所以元素找不到」的真实场景，
+  // 用来验证 Fingerprint 不会把它错误地归因成定位器失效。
+  setTimeout(function () { throw new Error('demo-js-crash: 首页商品数据渲染失败'); }, 30);
+</script>
+{% endif %}
+{% endblock %}

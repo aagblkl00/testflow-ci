@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}搜索 · TestFlow Demo 商城{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>商品搜索</h1>
+  {% if error %}<div class="error" data-testid="search-error">{{ error }}</div>{% endif %}
+  <form method="get" action="/search">
+    <div class="row" style="margin-bottom:18px">
+      <div><label for="q">关键词（商品名或 SKU）</label><input id="q" name="q" data-testid="search-input" value="{{ q }}"></div>
+      <div class="shrink"><button type="submit" data-testid="search-submit">搜索</button></div>
+    </div>
+  </form>
+
+  {% if q %}
+    {% if results %}
+    <table data-testid="search-results">
+      <thead><tr><th>SKU</th><th>名称</th><th>分类</th><th>价格</th><th>库存</th></tr></thead>
+      <tbody>
+      {% for item in results %}
+        <tr data-testid="search-row">
+          <td data-testid="cell-sku">{{ item.sku }}</td>
+          <td>{{ item.name }}</td>
+          <td>{{ item.category }}</td>
+          <td>¥{{ item.price }}</td>
+          <td>{{ item.stock }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="muted" style="margin-top:12px" data-testid="search-count">共 {{ results | length }} 条结果</p>
+    {% elif not error %}
+    <p data-testid="search-empty">没有找到匹配商品：{{ q }}</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

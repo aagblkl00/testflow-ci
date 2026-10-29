@@ -1,0 +1,41 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# local env / secrets
+.env
+
+# database (dev sqlite)
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite3
+# 迁移前的本地备份，含真实数据，不入库
+*.db.m1-backup
+*.db.bak
+
+# runtime evidence
+storage/
+
+# node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# playwright browsers (kept outside repo)
+browsers/
+
+# logs
+*.log
+
+# os
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 内部被测站点抓取的本地素材（前端 chunk / 接口文档），不属本仓库
+_oneai_*

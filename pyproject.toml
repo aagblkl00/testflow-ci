@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# 只打包 CLI。backend / demo_app / scripts 仍然按仓库目录直接用，
+# 不纳入发行包 —— 否则 `pip install -e .` 会把整个平台拖进 site-packages。
+[project]
+name = "testflow-ci-cli"
+version = "0.1.0"
+description = "TestFlow CI 命令行：触发 Web 自动化回归并读取结果"
+requires-python = ">=3.11"
+dependencies = ["httpx>=0.27"]
+
+[project.scripts]
+testflow = "cli.testflow.__main__:main"
+
+[tool.setuptools]
+packages = ["cli", "cli.testflow", "cli.testflow.commands"]

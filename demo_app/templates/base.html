@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}TestFlow Demo 商城{% endblock %}</title>
+<style>
+  :root { --line:#e5e7eb; --muted:#6b7280; --accent:#1f6feb; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; color:#111827; background:#f7f8fa; }
+  header { background:#fff; border-bottom:1px solid var(--line); padding:14px 24px; display:flex; align-items:center; gap:24px; }
+  header .brand { font-weight:600; font-size:16px; }
+  nav a { color:#374151; text-decoration:none; margin-right:18px; font-size:14px; }
+  nav a:hover { color:var(--accent); }
+  main { max-width:980px; margin:28px auto; padding:0 24px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:22px; }
+  h1 { font-size:20px; margin:0 0 18px; }
+  h2 { font-size:16px; margin:0 0 12px; }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+  input, select { width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:6px; font-size:14px; }
+  button { padding:9px 18px; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:6px; font-size:14px; cursor:pointer; }
+  button.ghost { background:#fff; color:#374151; border-color:var(--line); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:13px; }
+  .error { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:10px 12px; border-radius:6px; font-size:14px; margin-bottom:16px; }
+  .row { display:flex; gap:14px; align-items:flex-end; }
+  .row > * { flex:1; }
+  .row > .shrink { flex:0 0 auto; }
+  .muted { color:var(--muted); font-size:13px; }
+  .stats { display:flex; gap:14px; margin-bottom:18px; }
+  .stat { flex:1; background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .stat .k { font-size:12px; color:var(--muted); }
+  .stat .v { font-size:22px; font-weight:600; margin-top:6px; }
+  .fault-banner { background:#fffbeb; border-bottom:1px solid #fde68a; color:#92400e; font-size:12px; padding:6px 24px; }
+</style>
+</head>
+<body>
+{% if active_faults %}
+<div class="fault-banner" data-testid="fault-banner">故障注入已开启：{{ active_faults | join(', ') }}</div>
+{% endif %}
+<header>
+  <span class="brand" data-testid="app-brand">TestFlow Demo 商城</span>
+  <nav>
+    <a href="/home" data-testid="nav-home">首页</a>
+    <a href="/search" data-testid="nav-search">搜索</a>
+    <a href="/products" data-testid="nav-products">商品</a>
+    <a href="/orders" data-testid="nav-orders">订单</a>
+  </nav>
+  <span style="margin-left:auto" class="muted">
+    {% if user %}<span data-testid="current-user">{{ user }}</span> · <a href="/logout" data-testid="logout-link">退出</a>{% endif %}
+  </span>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>
